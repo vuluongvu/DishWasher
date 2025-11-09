@@ -50,7 +50,6 @@ class Particle {
 function animateFireworks() {
     f_ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; 
     f_ctx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
-
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].draw();
         particles[i].update();
@@ -83,6 +82,7 @@ const ctx = canvas.getContext('2d');
 const nameInput = document.getElementById('nameInput');
 const addButton = document.getElementById('addButton');
 const participantList = document.getElementById('participantList');
+const spinnerContainer = document.querySelector('.spinner-container');
 
 // Get Modal elements
 const winnerModal = document.getElementById('winnerModal');
@@ -91,32 +91,72 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const closeModalBtnFooter = document.getElementById('closeModalBtnFooter');
 const removeWinnerBtn = document.getElementById('removeWinnerBtn');
 
-let lastWinner = null; // To keep track of who to remove
+// --- THÊM MỚI: Nút Theme ---
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+let lastWinner = null;
 let participants = [];
-const colors = ['#d9534f', '#f0ad4e', '#5cb85c', '#428bca']; // R, Y, G, B
+const colors = ['#d9534f', '#f0ad4e', '#5cb85c', '#428bca'];
 let currentRotation = 0; 
 let spinning = false; 
 
+function resizeCanvas() {
+    const size = spinnerContainer.clientWidth;
+    canvas.width = size;
+    canvas.height = size;
+    drawWheel();
+}
+
+// --- CẬP NHẬT: hàm drawWheel() ---
 /**
- * Draws the spinning wheel on the canvas
+ * Vẽ vòng quay lên canvas
+ * Cập nhật để vẽ màu dựa trên light/dark mode
  */
+// --- THAY THẾ TOÀN BỘ HÀM NÀY ---
+
 function drawWheel() {
     const numSegments = participants.length;
+    
+    const isLightMode = document.body.classList.contains('light-mode');
+    
+    const { width, height } = canvas;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = (width / 2) - 2;
+    
+    const scale = width / 500; 
+    const centerCircleRadius = 40 * scale;
+    const textRadius = 160 * scale;
+    
+    // --- CẬP NHẬT FONT SIZE ---
+    // Thay đổi cỡ chữ "Quay" ở đây nếu muốn
+    const fontSize = Math.max(10, 22 * scale); // Giảm một chút để vừa chữ "Quay"
+    // --- KẾT THÚC CẬP NHẬT ---
+
+    ctx.clearRect(0, 0, width, height);
+    
+    // --- VỊ TRÍ 1: VẼ KHI VÒNG QUAY TRỐNG ---
     if (numSegments === 0) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.beginPath();
-        ctx.arc(250, 250, 248, 0, 2 * Math.PI);
-        ctx.fillStyle = '#444';
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = isLightMode ? '#ddd' : '#444'; 
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(250, 250, 40, 0, 2 * Math.PI);
-        ctx.fillStyle = '#fff';
+        ctx.arc(centerX, centerY, centerCircleRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = isLightMode ? '#ccc' : '#fff'; 
         ctx.fill();
+
+        // --- THÊM MỚI: Vẽ chữ "Quay" ---
+        ctx.fillStyle = '#333'; // Màu chữ
+        ctx.font = `bold ${fontSize}px Poppins`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Spin', centerX, centerY);
+        // --- KẾT THÚC THÊM MỚI ---
         return;
     }
 
     const sliceAngle = (2 * Math.PI) / numSegments;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     for (let i = 0; i < numSegments; i++) {
         const participant = participants[i];
@@ -124,43 +164,54 @@ function drawWheel() {
         const endAngle = (i + 1) * sliceAngle;
 
         ctx.beginPath();
-        ctx.moveTo(250, 250); 
-        ctx.arc(250, 250, 248, startAngle, endAngle);
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
         ctx.closePath();
         ctx.fillStyle = participant.color;
         ctx.fill();
 
         ctx.save();
-        ctx.translate(250, 250); 
-        ctx.rotate(startAngle + sliceAngle / 2); 
-        ctx.textAlign = 'center'; 
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
         if (participant.color === '#f0ad4e' || participant.color === '#5cb85c') {
-            ctx.fillStyle = '#000'; // Black text for Yellow/Green
+            ctx.fillStyle = '#000';
         } else {
-            ctx.fillStyle = '#FFF'; // White text for Red/Blue
+            ctx.fillStyle = '#FFF';
         }
         
-        ctx.font = 'bold 24px Poppins'; 
+        // --- CẬP NHẬT: Dùng cỡ chữ riêng cho tên
+        const nameFontSize = Math.max(10, 30 * scale);
+        ctx.font = `bold ${nameFontSize}px Poppins`;
+        // --- KẾT THÚC CẬP NHẬT ---
         
         let name = participant.name;
         if (name.length > 13) { 
             name = name.substring(0, 12) + '...';
         }
-        ctx.fillText(name, 160, 0); 
-        ctx.restore(); 
+        ctx.fillText(name, textRadius, 0);
+        ctx.restore();
     }
     
+    // --- VỊ TRÍ 2: VẼ KHI CÓ NGƯỜI CHƠI ---
+    // Vẽ vòng tròn trung tâm
     ctx.beginPath();
-    ctx.arc(250, 250, 40, 0, 2 * Math.PI);
-    ctx.fillStyle = '#fff';
+    ctx.arc(centerX, centerY, centerCircleRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = isLightMode ? '#ccc' : '#fff';
     ctx.fill();
+
+    // --- THÊM MỚI: Vẽ chữ "Quay" ---
+    ctx.fillStyle = '#333'; // Màu chữ
+    ctx.font = `bold ${fontSize}px Poppins`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Quay', centerX, centerY);
+    // --- KẾT THÚC THÊM MỚI ---
 }
 
-/**
- * Updates the HTML participant list
- */
+// ... (Các hàm updateParticipantList, handleAddParticipant, showModal, hideModal, handleSpin giữ nguyên) ...
 function updateParticipantList() {
     participantList.innerHTML = ''; 
     participants.forEach((participant, index) => {
@@ -198,10 +249,6 @@ function updateParticipantList() {
         participantList.appendChild(li);
     });
 }
-
-/**
- * Handles adding a new participant
- */
 function handleAddParticipant() {
     const name = nameInput.value.trim();
     if (name) {
@@ -215,26 +262,14 @@ function handleAddParticipant() {
         updateParticipantList(); 
     }
 }
-
-/**
- * Shows the winner modal
- */
 function showModal(winner) {
     lastWinner = winner;
     modalWinnerName.textContent = winner.name;
     winnerModal.classList.add('show');
 }
-
-/**
- * Hides the winner modal
- */
 function hideModal() {
     winnerModal.classList.remove('show');
 }
-
-/**
- * Handles the "spin" logic
- */
 function handleSpin() {
     if (spinning || participants.length < 2) return;
     
@@ -255,17 +290,13 @@ function handleSpin() {
     canvas.style.transform = `rotate(${finalRotation}deg)`;
     
     setTimeout(() => {
-        // --- Launch Fireworks ---
         launchFirework(window.innerWidth / 2, window.innerHeight / 2, winner.color);
         setTimeout(() => launchFirework(random(0, window.innerWidth), random(0, window.innerHeight * 0.5), winner.color), 300);
         setTimeout(() => launchFirework(random(0, window.innerWidth), random(0, window.innerHeight * 0.5), winner.color), 600);
         
-        // --- Show Winner Modal ---
         showModal(winner);
-
         spinning = false;
         
-        // Reset wheel
         const finalAngleInRads = (finalRotation * Math.PI / 180);
         currentRotation = finalAngleInRads % (2 * Math.PI); 
         canvas.style.transition = 'none';
@@ -278,25 +309,21 @@ function handleSpin() {
     }, 6100); 
 }
 
-// --- Event Listeners ---
+// --- Event Listeners (cũ) ---
 addButton.addEventListener('click', handleAddParticipant);
 nameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         handleAddParticipant();
     }
 });
-
 canvas.addEventListener('click', handleSpin);
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {
         handleSpin();
     }
 });
-
-// --- Modal Event Listeners ---
 closeModalBtn.addEventListener('click', hideModal);
 closeModalBtnFooter.addEventListener('click', hideModal);
-
 removeWinnerBtn.addEventListener('click', () => {
     if (lastWinner) {
         const winnerIndex = participants.indexOf(lastWinner);
@@ -311,6 +338,36 @@ removeWinnerBtn.addEventListener('click', () => {
     }
     hideModal();
 });
+window.addEventListener('resize', resizeCanvas);
 
-// --- Initial Draw ---
-drawWheel();
+
+// --- THÊM MỚI: Logic xử lý Theme ---
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        themeToggleBtn.textContent = '🌙'; // Icon mặt trăng
+    } else {
+        document.body.classList.remove('light-mode');
+        themeToggleBtn.textContent = '☀️'; // Icon mặt trời
+    }
+    // Vẽ lại vòng quay để cập nhật màu canvas (rất quan trọng)
+    drawWheel(); 
+}
+
+themeToggleBtn.addEventListener('click', () => {
+    // Chuyển đổi class
+    const isLight = document.body.classList.toggle('light-mode');
+    // Lưu lựa chọn
+    const newTheme = isLight ? 'light' : 'dark';
+    localStorage.setItem('theme', newTheme);
+    // Cập nhật icon
+    applyTheme(newTheme);
+});
+
+// --- CẬP NHẬT: Khởi tạo ban đầu ---
+// Load theme đã lưu (nếu có)
+const savedTheme = localStorage.getItem('theme') || 'dark'; // Mặc định là theme tối
+applyTheme(savedTheme);
+
+// Khởi tạo kích thước canvas (giữ nguyên)
+resizeCanvas();
